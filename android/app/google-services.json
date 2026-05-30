@@ -1,52 +1,13 @@
 {
   "project_info": {
-    "project_number": "169016250621",
-    "firebase_url": "https://apk-encrypt-d9254-default-rtdb.asia-southeast1.firebasedatabase.app",
-    "project_id": "apk-encrypt-d9254",
-    "storage_bucket": "apk-encrypt-d9254.firebasestorage.app"
+    "project_number": "385810867710",
+    "project_id": "tomas-app-7a613",
+    "storage_bucket": "tomas-app-7a613.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:169016250621:android:62d236465ffbd9ac89ee94",
-        "android_client_info": {
-          "package_name": "com.example.secure_chat"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDplyFMV2v4flPqmyNp6gLbDmgvgcyw8-s"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:169016250621:android:9a2474d3c75f60c389ee94",
-        "android_client_info": {
-          "package_name": "com.kibi.chatencrypt"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDplyFMV2v4flPqmyNp6gLbDmgvgcyw8-s"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:169016250621:android:91912b5c4293b0e289ee94",
+        "mobilesdk_app_id": "1:385810867710:android:3c565158bf3bc0696f8caf",
         "android_client_info": {
           "package_name": "com.tomas.tomas_app"
         }
@@ -54,7 +15,26 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDplyFMV2v4flPqmyNp6gLbDmgvgcyw8-s"
+          "current_key": "AIzaSyCkDOqCIa9Sc8S2wP1-GRQ_HFGu1PWSKWc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:385810867710:android:353c7bfe93ca45f56f8caf",
+        "android_client_info": {
+          "package_name": "com.tomas.tomas_flutter_tukang"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkDOqCIa9Sc8S2wP1-GRQ_HFGu1PWSKWc"
         }
       ],
       "services": {

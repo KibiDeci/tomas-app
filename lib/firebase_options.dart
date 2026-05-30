@@ -52,12 +52,11 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDplyFMV2v4flPqmyNp6gLbDmgvgcyw8-s',
-    appId: '1:169016250621:android:91912b5c4293b0e289ee94',
-    messagingSenderId: '169016250621',
-    projectId: 'apk-encrypt-d9254',
-    databaseURL: 'https://apk-encrypt-d9254-default-rtdb.asia-southeast1.firebasedatabase.app',
-    storageBucket: 'apk-encrypt-d9254.firebasestorage.app',
+    apiKey: 'AIzaSyCkDOqCIa9Sc8S2wP1-GRQ_HFGu1PWSKWc',
+    appId: '1:385810867710:android:3c565158bf3bc0696f8caf',
+    messagingSenderId: '385810867710',
+    projectId: 'tomas-app-7a613',
+    storageBucket: 'tomas-app-7a613.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(

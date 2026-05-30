@@ -1,8 +1,7 @@
 plugins {
     id("com.android.application")
-    id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
-    id("com.google.gms.google-services")  // ← tambahkan baris ini
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -16,16 +15,16 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+        jvmTarget = "17"  // ← wajib sama dengan Java (17, bukan 21)
     }
 
     defaultConfig {
         applicationId = "com.tomas.tomas_app"
-        minSdk = 21                          // ← ubah ke 21 (wajib untuk Firebase)
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        multiDexEnabled = true               // ← tambahkan baris ini
+        multiDexEnabled = true
     }
 
     buildTypes {
