@@ -5,14 +5,27 @@ import 'package:latlong2/latlong.dart';
 class OsmMapWidget extends StatelessWidget {
   final LatLng? center;
   final List<Marker>? markers;
-  const OsmMapWidget({super.key, this.center, this.markers});
+  final void Function(TapPosition, LatLng)? onTap;
+  final MapController? controller;
+
+  const OsmMapWidget({
+    super.key,
+    this.center,
+    this.markers,
+    this.onTap,
+    this.controller,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final initialCenter = center ?? const LatLng(-7.5585, 110.8317);
+
     return FlutterMap(
+      mapController: controller,
       options: MapOptions(
-        center: center ?? const LatLng(-7.5585, 110.8317), // Surakarta default
-        zoom: 14,
+        initialCenter: initialCenter,
+        initialZoom: 14,
+        onTap: onTap,
       ),
       children: [
         TileLayer(

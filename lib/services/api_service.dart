@@ -13,13 +13,14 @@ class FirebaseService {
   // ── Layanan ──────────────────────────────────────────────────────────────
 
   static Future<List<Map<String, dynamic>>> getLayanan() async {
-    final snap = await _db
-        .collection('layanan')
-        .orderBy('urutan')
-        .get();
-    return snap.docs
+    final snap = await _db.collection('layanan').get();
+    final list = snap.docs
         .map((d) => {'id_layanan': d.id, ...d.data()})
         .toList();
+    // Sort di Flutter, tidak pakai orderBy agar tidak butuh index
+    list.sort((a, b) =>
+        ((a['urutan'] as num?) ?? 0).compareTo((b['urutan'] as num?) ?? 0));
+    return list;
   }
 
   // ── Tukang ───────────────────────────────────────────────────────────────
@@ -28,17 +29,18 @@ class FirebaseService {
     String? q,
     String? layanan,
   }) async {
-    Query query = _db.collection('tukang');
-    if (layanan != null && layanan.isNotEmpty) {
-      query = query.where('kategori', isEqualTo: layanan);
-    }
-    final snap = await query.get();
+    // Ambil semua tukang, filter di Flutter
+    final snap = await _db.collection('tukang').get();
     var list = snap.docs
         .map((d) => {'id_tukang': d.id, ...d.data() as Map<String, dynamic>})
         .toList();
+
+    if (layanan != null && layanan.isNotEmpty) {
+      list = list.where((t) => t['kategori'] == layanan).toList();
+    }
     if (q != null && q.isNotEmpty) {
       list = list
-          .where((t) => (t['nama'] as String)
+          .where((t) => (t['nama'] as String? ?? '')
               .toLowerCase()
               .contains(q.toLowerCase()))
           .toList();
@@ -54,17 +56,22 @@ class FirebaseService {
 
   static Future<List<Map<String, dynamic>>> getTukangByLayanan() async {
     final layananList = await getLayanan();
+    // Ambil semua tukang sekaligus (1 query saja)
+    final tukangSnap = await _db.collection('tukang').get();
+    final allTukang = tukangSnap.docs
+        .map((d) => {'id_tukang': d.id, ...d.data() as Map<String, dynamic>})
+        .toList();
+
     final result = <Map<String, dynamic>>[];
     for (final l in layananList) {
-      final snap = await _db
-          .collection('tukang')
-          .where('kategori', isEqualTo: l['nama_layanan'])
-          .where('status_aktif', isEqualTo: true)
-          .limit(10)
-          .get();
-      final tukangList = snap.docs
-          .map((d) => {'id_tukang': d.id, ...d.data()})
-          .toList();
+      final namaLayanan = l['nama_layanan'] as String? ?? '';
+      final tukangList = allTukang.where((t) {
+        final kategori = t['kategori'] as String? ?? '';
+        final status = t['status_aktif'];
+        final aktif = status == true || status == 'true';
+        return kategori == namaLayanan && aktif;
+      }).take(10).toList();
+
       if (tukangList.isNotEmpty) {
         result.add({'layanan': l, 'tukang': tukangList});
       }
@@ -75,10 +82,10 @@ class FirebaseService {
   // ── Orders ───────────────────────────────────────────────────────────────
 
   static Future<List<Map<String, dynamic>>> getOrders() async {
+    // Ambil hanya berdasarkan id_user (tidak pakai orderBy agar tidak butuh index)
     final snap = await _db
         .collection('orders')
         .where('id_user', isEqualTo: _uid)
-        .orderBy('created_at', descending: true)
         .get();
 
     final orders = <Map<String, dynamic>>[];
@@ -104,12 +111,22 @@ class FirebaseService {
         'layanan': layananDoc.exists
             ? {'id_layanan': layananDoc.id, ...layananDoc.data()!}
             : null,
-        'pembayaran':
-            payDoc.exists ? payDoc.data() : {'status': 'unpaid'},
+        'pembayaran': payDoc.exists ? payDoc.data() : {'status': 'unpaid'},
         'has_review': reviewSnap.docs.isNotEmpty,
         ...data,
       });
     }
+
+    // Sort di Flutter
+    orders.sort((a, b) {
+      final ta = a['created_at'];
+      final tb = b['created_at'];
+      if (ta == null && tb == null) return 0;
+      if (ta == null) return 1;
+      if (tb == null) return -1;
+      return tb.compareTo(ta);
+    });
+
     return orders;
   }
 
@@ -141,14 +158,12 @@ class FirebaseService {
       'created_at': FieldValue.serverTimestamp(),
     });
 
-    // Buat dokumen pembayaran awal
     await _db.collection('pembayaran').doc(ref.id).set({
       'id_order': ref.id,
       'status': 'unpaid',
       'jumlah': 0,
     });
 
-    // Buat notifikasi
     await _createNotifikasi(
       judul: 'Pesanan Dibuat',
       pesan: 'Pesanan kamu telah berhasil dibuat.',
@@ -175,7 +190,6 @@ class FirebaseService {
       'created_at': FieldValue.serverTimestamp(),
     });
 
-    // Update rata-rata rating tukang
     final snap = await _db
         .collection('reviews')
         .where('id_tukang', isEqualTo: idTukang)
@@ -198,8 +212,7 @@ class FirebaseService {
     final result = <Map<String, dynamic>>[];
     for (final doc in snap.docs) {
       final idTukang = doc.data()['id_tukang'] as String;
-      final tukangDoc =
-          await _db.collection('tukang').doc(idTukang).get();
+      final tukangDoc = await _db.collection('tukang').doc(idTukang).get();
       if (tukangDoc.exists) {
         result.add({'id_tukang': tukangDoc.id, ...tukangDoc.data()!});
       }
@@ -227,14 +240,14 @@ class FirebaseService {
 
     if (snap.docs.isNotEmpty) {
       await snap.docs.first.reference.delete();
-      return false; // sudah unfavorite
+      return false;
     } else {
       await _db.collection('favorit').add({
         'id_user': _uid,
         'id_tukang': idTukang,
         'created_at': FieldValue.serverTimestamp(),
       });
-      return true; // sudah favorite
+      return true;
     }
   }
 
@@ -242,7 +255,6 @@ class FirebaseService {
 
   static String _chatDocId(String idTukang) => '${idTukang}_$_uid';
 
-  /// Stream realtime untuk pesan chat
   static Stream<List<Map<String, dynamic>>> chatStream(String idTukang) {
     return _db
         .collection('chat')
@@ -255,10 +267,10 @@ class FirebaseService {
   }
 
   static Future<List<Map<String, dynamic>>> getChatList() async {
+    // Ambil hanya where id_user, tidak pakai orderBy
     final snap = await _db
         .collection('chat')
         .where('id_user', isEqualTo: _uid)
-        .orderBy('last_message_at', descending: true)
         .get();
 
     final result = <Map<String, dynamic>>[];
@@ -274,12 +286,22 @@ class FirebaseService {
         });
       }
     }
+
+    // Sort di Flutter
+    result.sort((a, b) {
+      final ta = a['last_message_at'];
+      final tb = b['last_message_at'];
+      if (ta == null && tb == null) return 0;
+      if (ta == null) return 1;
+      if (tb == null) return -1;
+      return tb.compareTo(ta);
+    });
+
     return result;
   }
 
   static Future<void> sendMessage(String idTukang, String pesan) async {
-    final chatRef =
-        _db.collection('chat').doc(_chatDocId(idTukang));
+    final chatRef = _db.collection('chat').doc(_chatDocId(idTukang));
 
     await chatRef.collection('messages').add({
       'pesan': pesan,
@@ -317,10 +339,8 @@ class FirebaseService {
     );
   }
 
-  static Future<Map<String, dynamic>> getPaymentStatus(
-      String idOrder) async {
-    final doc =
-        await _db.collection('pembayaran').doc(idOrder).get();
+  static Future<Map<String, dynamic>> getPaymentStatus(String idOrder) async {
+    final doc = await _db.collection('pembayaran').doc(idOrder).get();
     return doc.exists ? doc.data()! : {'status': 'unpaid'};
   }
 
@@ -347,52 +367,58 @@ class FirebaseService {
     final ref = _storage.ref().child('users/$_uid/foto_profil.jpg');
     await ref.putFile(file);
     final url = await ref.getDownloadURL();
-    await _db
-        .collection('users')
-        .doc(_uid)
-        .update({'foto_url': url});
+    await _db.collection('users').doc(_uid).update({'foto_url': url});
     return url;
   }
 
   // ── Notifikasi ───────────────────────────────────────────────────────────
 
   static Future<List<Map<String, dynamic>>> getNotifikasi() async {
+    // Tidak pakai orderBy agar tidak butuh composite index
     final snap = await _db
         .collection('notifikasi')
         .where('id_user', isEqualTo: _uid)
-        .orderBy('created_at', descending: true)
         .get();
-    return snap.docs
+    final list = snap.docs
         .map((d) => {'id_notif': d.id, ...d.data()})
         .toList();
+    // Sort di Flutter
+    list.sort((a, b) {
+      final ta = a['created_at'];
+      final tb = b['created_at'];
+      if (ta == null && tb == null) return 0;
+      if (ta == null) return 1;
+      if (tb == null) return -1;
+      return tb.compareTo(ta);
+    });
+    return list;
   }
 
   static Future<int> getUnreadCount() async {
+    // Tidak pakai .count() agar tidak butuh index
     final snap = await _db
         .collection('notifikasi')
         .where('id_user', isEqualTo: _uid)
-        .where('dibaca', isEqualTo: false)
-        .count()
         .get();
-    return snap.count ?? 0;
+    return snap.docs
+        .where((d) => d.data()['dibaca'] == false)
+        .length;
   }
 
   static Future<void> markNotifRead(String id) async {
-    await _db
-        .collection('notifikasi')
-        .doc(id)
-        .update({'dibaca': true});
+    await _db.collection('notifikasi').doc(id).update({'dibaca': true});
   }
 
   static Future<void> markAllNotifRead() async {
     final snap = await _db
         .collection('notifikasi')
         .where('id_user', isEqualTo: _uid)
-        .where('dibaca', isEqualTo: false)
         .get();
     final batch = _db.batch();
     for (final doc in snap.docs) {
-      batch.update(doc.reference, {'dibaca': true});
+      if (doc.data()['dibaca'] == false) {
+        batch.update(doc.reference, {'dibaca': true});
+      }
     }
     await batch.commit();
   }
@@ -413,7 +439,7 @@ class FirebaseService {
   }
 }
 
-// Alias agar semua screen lama yang pakai ApiService tidak perlu diubah nama
+// Alias agar semua screen yang pakai ApiService tidak perlu diubah
 typedef ApiService = FirebaseService;
 
 class ApiException implements Exception {

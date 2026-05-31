@@ -115,25 +115,26 @@ class _BottomNav extends StatelessWidget {
                   onTap: () => onTap(2),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 50,
-                        height: 50,
+                        width: 46,
+                        height: 46,
                         decoration: BoxDecoration(
                           color: _kBlue,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
                               color: _kBlue.withValues(alpha: 0.35),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
                             ),
                           ],
                         ),
                         child: const Icon(
                           Icons.add,
                           color: Colors.white,
-                          size: 28,
+                          size: 26,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -529,14 +530,13 @@ class _HomeTabState extends State<_HomeTab> {
                               ),
                             ),
                             // Left content
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                18,
-                                14,
-                                90,
-                                14,
-                              ),
+                            Positioned(
+                              left: 18,
+                              top: 0,
+                              bottom: 0,
+                              right: 90,
                               child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
@@ -546,9 +546,7 @@ class _HomeTabState extends State<_HomeTab> {
                                         height: 20,
                                         decoration: BoxDecoration(
                                           color: Colors.white.withValues(alpha: 0.2),
-                                          borderRadius: BorderRadius.circular(
-                                            4,
-                                          ),
+                                          borderRadius: BorderRadius.circular(4),
                                         ),
                                         child: const Center(
                                           child: Text(
@@ -573,39 +571,38 @@ class _HomeTabState extends State<_HomeTab> {
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 6),
+                                  const SizedBox(height: 5),
                                   const Text(
                                     'SOLUSI JASA\nTERLENGKAP!',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 18,
+                                      fontSize: 17,
                                       fontWeight: FontWeight.w900,
                                       height: 1.15,
                                       letterSpacing: 0.3,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 3),
                                   const Text(
                                     'Semua Layanan dalam\nSatu Aplikasi!',
                                     style: TextStyle(
                                       color: Colors.white70,
-                                      fontSize: 11,
-                                      height: 1.4,
+                                      fontSize: 10,
+                                      height: 1.3,
                                     ),
                                   ),
-                                  const Spacer(),
+                                  const SizedBox(height: 8),
                                   GestureDetector(
                                     onTap: () => Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) =>
-                                            const TukangListScreen(),
+                                        builder: (_) => const TukangListScreen(),
                                       ),
                                     ),
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 8,
+                                        horizontal: 14,
+                                        vertical: 7,
                                       ),
                                       decoration: BoxDecoration(
                                         color: _kOrange,
