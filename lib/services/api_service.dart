@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 
 class FirebaseService {
   static final _db = FirebaseFirestore.instance;
@@ -55,9 +56,12 @@ class FirebaseService {
   }
 
   static Future<List<Map<String, dynamic>>> getTukangByLayanan() async {
+    debugPrint('=== getTukangByLayanan DIPANGGIL ===');
     final layananList = await getLayanan();
-    // Ambil semua tukang sekaligus (1 query saja)
+    debugPrint('=== layanan: ${layananList.length} ===');
     final tukangSnap = await _db.collection('tukang').get();
+    debugPrint('=== tukang total: ${tukangSnap.docs.length} ===');
+
     final allTukang = tukangSnap.docs
         .map((d) => {'id_tukang': d.id, ...d.data() as Map<String, dynamic>})
         .toList();
@@ -65,12 +69,21 @@ class FirebaseService {
     final result = <Map<String, dynamic>>[];
     for (final l in layananList) {
       final namaLayanan = l['nama_layanan'] as String? ?? '';
-      final tukangList = allTukang.where((t) {
-        final kategori = t['kategori'] as String? ?? '';
-        final status = t['status_aktif'];
-        final aktif = status == true || status == 'true';
-        return kategori == namaLayanan && aktif;
-      }).take(10).toList();
+      debugPrint('=== cek layanan: "$namaLayanan" ==='); // ← TAMBAH INI
+      for (final t in allTukang) {
+        debugPrint(
+            '=== tukang kategori: "${t['kategori']}" status: "${t['status_aktif']}" ==='); // ← TAMBAH INI
+      }
+      final tukangList = allTukang
+          .where((t) {
+            final kategori = t['kategori'] as String? ?? '';
+            final status = t['status_aktif'];
+            final aktif = status == true || status == 'true';
+            return kategori == namaLayanan && aktif;
+          })
+          .take(10)
+          .toList();
+      debugPrint('=== match: ${tukangList.length} ==='); // ← TAMBAH INI
 
       if (tukangList.isNotEmpty) {
         result.add({'layanan': l, 'tukang': tukangList});

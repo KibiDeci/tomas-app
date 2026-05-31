@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
+import '../order/order_list_screen.dart';
 
 const _kBlue = Color(0xFF2563EB);
 
@@ -22,12 +23,13 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
   Future<void> _load() async {
     try {
       final data = await ApiService.getNotifikasi();
+      if (!mounted) return;
       setState(() {
         _list = data;
         _loading = false;
       });
     } catch (_) {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -40,29 +42,59 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
     });
   }
 
-  Future<void> _markOne(String id, int index) async {  // ← String
+  Future<void> _markOne(String id, int index) async {
     await ApiService.markNotifRead(id);
     setState(() {
       _list[index] = {
         ...(_list[index] as Map<String, dynamic>),
-        'dibaca': true,
+        'dibaca': true
       };
     });
   }
 
   IconData _iconForType(String? tipe) {
     switch (tipe) {
-      case 'order': return Icons.receipt_long;
-      case 'chat': return Icons.chat_bubble;
-      default: return Icons.notifications;
+      case 'order':
+        return Icons.receipt_long;
+      case 'chat':
+        return Icons.chat_bubble;
+      case 'promo':
+        return Icons.local_offer;
+      default:
+        return Icons.notifications;
     }
   }
 
   Color _colorForType(String? tipe) {
     switch (tipe) {
-      case 'order': return Colors.green;
-      case 'chat': return Colors.blue;
-      default: return Colors.orange;
+      case 'order':
+        return const Color(0xFF2563EB);
+      case 'chat':
+        return Colors.green;
+      case 'promo':
+        return Colors.orange;
+      default:
+        return Colors.purple;
+    }
+  }
+
+  String _formatTime(dynamic ts) {
+    if (ts == null) return '';
+    try {
+      DateTime dt;
+      if (ts is String) {
+        dt = DateTime.parse(ts).toLocal();
+      } else {
+        dt = (ts as dynamic).toDate() as DateTime;
+      }
+      final now = DateTime.now();
+      final diff = now.difference(dt);
+      if (diff.inMinutes < 1) return 'Baru saja';
+      if (diff.inMinutes < 60) return '${diff.inMinutes} menit lalu';
+      if (diff.inHours < 24) return '${diff.inHours} jam lalu';
+      return '${diff.inDays} hari lalu';
+    } catch (_) {
+      return '';
     }
   }
 
@@ -72,10 +104,8 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
       appBar: AppBar(
-        title: const Text(
-          'Notifikasi',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
+        title: const Text('Notifikasi',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: _kBlue,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -83,131 +113,149 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
           if (unread > 0)
             TextButton(
               onPressed: _markAll,
-              child: const Text(
-                'Tandai semua dibaca',
-                style: TextStyle(color: Colors.white, fontSize: 12),
-              ),
+              child: const Text('Tandai semua dibaca',
+                  style: TextStyle(color: Colors.white, fontSize: 12)),
             ),
         ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: _kBlue))
           : _list.isEmpty
-          ? const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.notifications_off_outlined, size: 64, color: Colors.grey),
-                  SizedBox(height: 12),
-                  Text('Belum ada notifikasi',
-                      style: TextStyle(color: Colors.grey, fontSize: 15)),
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: _list.length,
-                itemBuilder: (_, i) {
-                  final n = _list[i] as Map<String, dynamic>;
-                  final read = n['dibaca'] == true;
-                  final tipe = n['tipe'] as String?;
-                  return InkWell(
-                    onTap: read
-                        ? null
-                        : () => _markOne(n['id_notif'] as String, i),  // ← String
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: read ? null : Border.all(color: _kBlue.withOpacity(0.3)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
+              ? const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.notifications_off_outlined,
+                          size: 64, color: Colors.grey),
+                      SizedBox(height: 12),
+                      Text('Belum ada notifikasi',
+                          style: TextStyle(color: Colors.grey, fontSize: 15)),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: _list.length,
+                    itemBuilder: (_, i) {
+                      final n = _list[i] as Map<String, dynamic>;
+                      final read = n['dibaca'] == true;
+                      final tipe = n['tipe'] as String?;
+                      final idOrder = n['id_order'] as String?;
+
+                      return InkWell(
+                        onTap: () {
+                          if (!read) _markOne(n['id_notif'] as String, i);
+                          // Navigasi ke detail pesanan jika notif tipe order
+                          if (tipe == 'order') {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const OrderListScreen(),
+                                ));
+                          }
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 4),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color:
+                                read ? Colors.white : const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(12),
+                            border: read
+                                ? Border.all(color: const Color(0xFFE5E7EB))
+                                : Border.all(color: _kBlue.withOpacity(0.3)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.04),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: _colorForType(tipe).withOpacity(0.12),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(_iconForType(tipe),
-                                color: _colorForType(tipe), size: 20),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: _colorForType(tipe).withOpacity(0.12),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(_iconForType(tipe),
+                                    color: _colorForType(tipe), size: 20),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Expanded(
-                                      child: Text(
-                                        n['judul'] as String? ?? '',
-                                        style: TextStyle(
-                                          fontWeight: read ? FontWeight.w500 : FontWeight.bold,
-                                          fontSize: 13,
-                                          color: const Color(0xFF1F2937),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            n['judul'] as String? ?? '',
+                                            style: TextStyle(
+                                              fontWeight: read
+                                                  ? FontWeight.w500
+                                                  : FontWeight.bold,
+                                              fontSize: 13,
+                                              color: const Color(0xFF1F2937),
+                                            ),
+                                          ),
                                         ),
-                                      ),
+                                        if (!read)
+                                          Container(
+                                            width: 8,
+                                            height: 8,
+                                            decoration: const BoxDecoration(
+                                                color: _kBlue,
+                                                shape: BoxShape.circle),
+                                          ),
+                                      ],
                                     ),
-                                    if (!read)
-                                      Container(
-                                        width: 8,
-                                        height: 8,
-                                        decoration: const BoxDecoration(
-                                          color: _kBlue,
-                                          shape: BoxShape.circle,
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      n['pesan'] as String? ?? '',
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.black54,
+                                          height: 1.4),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          _formatTime(n['created_at']),
+                                          style: const TextStyle(
+                                              fontSize: 11, color: Colors.grey),
                                         ),
-                                      ),
+                                        if (tipe == 'order') ...[
+                                          const SizedBox(width: 8),
+                                          const Text('• Lihat Pesanan',
+                                              style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: _kBlue,
+                                                  fontWeight: FontWeight.w600)),
+                                        ],
+                                      ],
+                                    ),
                                   ],
                                 ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  n['pesan'] as String? ?? '',
-                                  style: const TextStyle(
-                                      fontSize: 12, color: Colors.black54, height: 1.4),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  _formatTime(n['created_at'] as String?),
-                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
-                                ),
-                              ],
-                            ),
+                              ),
+                              if (tipe == 'order')
+                                const Icon(Icons.chevron_right,
+                                    color: Color(0xFF9CA3AF), size: 18),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
     );
-  }
-
-  String _formatTime(String? iso) {
-    if (iso == null) return '';
-    try {
-      final dt = DateTime.parse(iso).toLocal();
-      final now = DateTime.now();
-      final diff = now.difference(dt);
-      if (diff.inMinutes < 60) return '${diff.inMinutes} menit lalu';
-      if (diff.inHours < 24) return '${diff.inHours} jam lalu';
-      return '${diff.inDays} hari lalu';
-    } catch (_) {
-      return '';
-    }
   }
 }

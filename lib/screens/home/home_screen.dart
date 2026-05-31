@@ -245,20 +245,31 @@ class _HomeTabState extends State<_HomeTab> {
   }
 
   Future<void> _load() async {
+    if (mounted) setState(() => _loading = true);
     try {
-      final r = await Future.wait([
-        ApiService.getLayanan(),
-        ApiService.getTukangByLayanan(),
-        ApiService.getUnreadCount(),
-      ]);
+      debugPrint('=== HOME _load DIPANGGIL ==='); // ← TAMBAH
+      final layanan = await ApiService.getLayanan();
+      debugPrint('=== HOME layanan hasil: ${layanan.length} ==='); // ← TAMBAH
+      final byLayanan = await ApiService.getTukangByLayanan();
+      debugPrint(
+          '=== HOME byLayanan hasil: ${byLayanan.length} ==='); // ← TAMBAH
+      int unread = 0;
+      try {
+        unread = await ApiService.getUnreadCount();
+      } catch (_) {}
+
       if (!mounted) return;
       setState(() {
-        _layananList = r[0] as List;
-        _byLayanan = r[1] as List;
-        _unreadCount = r[2] as int;
+        _layananList = layanan;
+        _byLayanan = byLayanan;
+        _unreadCount = unread;
         _loading = false;
       });
-    } catch (_) {
+      debugPrint(
+          '=== HOME setState selesai, _layananList: ${_layananList.length}, _byLayanan: ${_byLayanan.length} ==='); // ← TAMBAH
+    } catch (e, st) {
+      debugPrint('HOME _load ERROR: $e');
+      debugPrint('$st');
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -1000,25 +1011,25 @@ class _TukangListScreenState extends State<TukangListScreen> {
 
   Future<void> _load() async {
     try {
-      final data = await ApiService.getTukang(q: widget.query);
+      final data = await ApiService.getTukang(
+          q: widget.query, layanan: widget.layanan);
       if (!mounted) return;
-      final list = data
-          .map((t) => Tukang.fromJson(t))
-          .toList();
-      final cats =
-          list
-              .map((t) => t.kategori ?? '')
-              .where((c) => c.isNotEmpty)
-              .toSet()
-              .toList()
-            ..sort();
+      final list = data.map((t) => Tukang.fromJson(t)).toList();
+      final cats = list
+          .map((t) => t.kategori ?? '')
+          .where((c) => c.isNotEmpty)
+          .toSet()
+          .toList()
+        ..sort();
       setState(() {
         _all = list;
         _cats = cats;
         _loading = false;
         _filter();
       });
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('TUKANGLIST _load ERROR: $e');
+      debugPrint('$st');
       if (mounted) setState(() => _loading = false);
     }
   }
