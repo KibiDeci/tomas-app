@@ -5,13 +5,16 @@ class Tukang {
   final String? lokasi;
   final String? alamat;
   final String? bio;
+  final String? pengalaman;        // ← BARU
   final String? noHp;
   final double? tarif;
+  final int? jumlahOrder;          // ← BARU
   final bool statusAktif;
   final String? fotoUrl;
   final double rating;
   final double? latitude;
   final double? longitude;
+  final List<String>? fotoPortfolioUrls; // ← BARU
 
   Tukang({
     required this.idTukang,
@@ -20,13 +23,16 @@ class Tukang {
     this.lokasi,
     this.alamat,
     this.bio,
+    this.pengalaman,
     this.noHp,
     this.tarif,
+    this.jumlahOrder,
     required this.statusAktif,
     this.fotoUrl,
     this.rating = 4.7,
     this.latitude,
     this.longitude,
+    this.fotoPortfolioUrls,
   });
 
   factory Tukang.fromJson(Map<String, dynamic> j) => Tukang(
@@ -36,19 +42,17 @@ class Tukang {
         lokasi: j['lokasi'],
         alamat: j['alamat'],
         bio: j['bio'],
+        pengalaman: j['pengalaman'],
         noHp: j['no_hp'],
-        tarif: j['tarif'] != null
-            ? (j['tarif'] as num).toDouble()
-            : null,
-        statusAktif:
-            j['status_aktif'] == true || j['status_aktif'] == 1,
+        tarif: j['tarif'] != null ? (j['tarif'] as num).toDouble() : null,
+        jumlahOrder: j['jumlah_order'] != null ? (j['jumlah_order'] as num).toInt() : null,
+        statusAktif: j['status_aktif'] == true || j['status_aktif'] == 1,
         fotoUrl: j['foto_url'],
         rating: ((j['rating'] ?? 4.7) as num).toDouble(),
-        latitude: j['latitude'] != null
-            ? (j['latitude'] as num).toDouble()
-            : null,
-        longitude: j['longitude'] != null
-            ? (j['longitude'] as num).toDouble()
+        latitude: j['latitude'] != null ? (j['latitude'] as num).toDouble() : null,
+        longitude: j['longitude'] != null ? (j['longitude'] as num).toDouble() : null,
+        fotoPortfolioUrls: j['foto_portfolio'] != null
+            ? List<String>.from(j['foto_portfolio'] as List)
             : null,
       );
 }

@@ -19,9 +19,9 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
   final _passConfirmCtrl = TextEditingController();
 
   bool _loading = false;
-  bool _showPass = false;
-  bool _showPassConfirm = false;
-  bool _changePass = false;
+  final bool _showPass = false;
+  final bool _showPassConfirm = false;
+  final bool _changePass = false;
 
   @override
   void initState() {
@@ -129,8 +129,9 @@ class _EditProfilScreenState extends State<EditProfilScreen> {
                   icon: Icons.phone_outlined,
                   keyboardType: TextInputType.phone,
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty)
+                    if (v == null || v.trim().isEmpty) {
                       return 'No. HP tidak boleh kosong';
+                    }
                     if (v.trim().length < 9) return 'No. HP tidak valid';
                     return null;
                   },
@@ -206,8 +207,7 @@ class _SectionCard extends StatelessWidget {
   const _SectionCard({
     required this.title,
     required this.children,
-    this.trailing,
-  });
+  }) : trailing = null;
 
   @override
   Widget build(BuildContext context) {
@@ -238,7 +238,7 @@ class _SectionCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 8,
                   offset: const Offset(0, 2))
             ],

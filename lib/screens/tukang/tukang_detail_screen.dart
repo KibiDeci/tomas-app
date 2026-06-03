@@ -11,8 +11,7 @@ import '../chat/chat_screen.dart';
 import '../order/konfirmasi_screen.dart';
 
 class TukangDetailScreen extends StatefulWidget {
-  final String idTukang; // ← String
-
+  final String idTukang;
   const TukangDetailScreen({super.key, required this.idTukang});
 
   @override
@@ -25,7 +24,9 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
   bool _loading = true;
   bool _favorited = false;
   bool _favLoading = false;
-  String? _selectedLayanan; // ← String?
+  String? _selectedLayanan;
+  int _currentPhotoPage = 0;
+  bool _descExpanded = false;
 
   @override
   void initState() {
@@ -70,7 +71,7 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
     }
     setState(() => _favLoading = true);
     try {
-      final isFav = await ApiService.toggleFavorit(widget.idTukang); // ← bool
+      final isFav = await ApiService.toggleFavorit(widget.idTukang);
       setState(() => _favorited = isFav);
     } catch (_) {
     } finally {
@@ -114,7 +115,7 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => ChatScreen(
-          idTukang: widget.idTukang, // ← sudah String
+          idTukang: widget.idTukang,
           namaTukang: _tukang!.nama,
           fotoUrl: _tukang!.fotoUrl,
         ),
@@ -163,12 +164,15 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
     }
 
     final t = _tukang!;
+    final photos = t.fotoPortfolioUrls ?? [];
+
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F7),
       body: CustomScrollView(
         slivers: [
+          // ── HEADER: Foto Pengerjaan ──────────────────────────────────
           SliverAppBar(
-            expandedHeight: 250,
+            expandedHeight: 260,
             pinned: true,
             backgroundColor: const Color(0xFF2563EB),
             foregroundColor: Colors.white,
@@ -194,23 +198,100 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
                     ),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              background: t.fotoUrl != null
-                  ? Image.network(
-                      t.fotoUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (ctx, err, stack) =>
-                          _headerPlaceholder(), // ← fix
-                    )
-                  : _headerPlaceholder(),
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Carousel foto pengerjaan
+                  photos.isNotEmpty
+                      ? PageView.builder(
+                          itemCount: photos.length,
+                          onPageChanged: (i) =>
+                              setState(() => _currentPhotoPage = i),
+                          itemBuilder: (ctx, i) => Image.network(
+                            photos[i],
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                _workPhotoPlaceholder(),
+                          ),
+                        )
+                      : _workPhotoPlaceholder(),
+                  // Gradient overlay bawah
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      height: 80,
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [Colors.black54, Colors.transparent],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Label foto pengerjaan
+                  Positioned(
+                    bottom: 12,
+                    left: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black38,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.photo_library_outlined,
+                              size: 13, color: Colors.white70),
+                          const SizedBox(width: 4),
+                          Text(
+                            photos.isEmpty
+                                ? 'Foto Pengerjaan'
+                                : 'Foto Pengerjaan (${photos.length})',
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Dot indicator jika banyak foto
+                  if (photos.length > 1)
+                    Positioned(
+                      bottom: 12,
+                      right: 16,
+                      child: Row(
+                        children: List.generate(
+                          photos.length,
+                          (i) => Container(
+                            width: 6,
+                            height: 6,
+                            margin: const EdgeInsets.symmetric(horizontal: 2),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _currentPhotoPage == i
+                                  ? Colors.white
+                                  : Colors.white38,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
+
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Name & rating
+                  // ── KARTU: Foto Profil (kiri) + Nama (kanan) ────────────
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -221,24 +302,56 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
+                            // Foto profil kiri
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(40),
+                              child: t.fotoUrl != null
+                                  ? Image.network(
+                                      t.fotoUrl!,
+                                      width: 64,
+                                      height: 64,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) =>
+                                          _profilePlaceholder(),
+                                    )
+                                  : _profilePlaceholder(),
+                            ),
+                            const SizedBox(width: 14),
+                            // Nama + Kategori
                             Expanded(
-                              child: Text(
-                                t.nama,
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF1F2937),
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    t.nama,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF1F2937),
+                                    ),
+                                  ),
+                                  if (t.kategori != null) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      t.kategori!,
+                                      style: const TextStyle(
+                                          fontSize: 13,
+                                          color: Color(0xFF2563EB)),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
+                            // Badge status
                             Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
                                 color: t.statusAktif
-                                    ? const Color(0xFF10B981)
-                                    : const Color(0xFF9CA3AF),
+                                    ? const Color(0xFFD1FAE5)
+                                    : const Color(0xFFF3F4F6),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
@@ -254,36 +367,53 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+
+                        const Divider(height: 24),
+
+                        // Statistik: Rating | Pesanan | Tarif
                         Row(
                           children: [
-                            const Icon(Icons.star,
-                                size: 16, color: Color(0xFFF59E0B)),
-                            const SizedBox(width: 4),
-                            Text(
+                            _statItem(
+                              Icons.star,
+                              const Color(0xFFF59E0B),
                               t.rating.toStringAsFixed(1),
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF1F2937)),
+                              'Rating',
                             ),
-                            const SizedBox(width: 16),
-                            if (t.lokasi != null) ...[
+                            _vDivider(),
+                            _statItem(
+                              Icons.work_outline,
+                              const Color(0xFF2563EB),
+                              t.jumlahOrder != null ? '${t.jumlahOrder}' : '-',
+                              'Pesanan',
+                            ),
+                            _vDivider(),
+                            _statItem(
+                              Icons.attach_money,
+                              const Color(0xFF10B981),
+                              t.tarif != null
+                                  ? 'Rp${_formatPrice(t.tarif!)}'
+                                  : 'Nego',
+                              'Tarif',
+                            ),
+                          ],
+                        ),
+
+                        if (t.lokasi != null) ...[
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
                               const Icon(Icons.location_on_outlined,
                                   size: 14, color: Colors.grey),
                               const SizedBox(width: 4),
-                              Text(t.lokasi!,
+                              Expanded(
+                                child: Text(
+                                  t.lokasi!,
                                   style: const TextStyle(
-                                      fontSize: 13, color: Colors.grey)),
+                                      fontSize: 13, color: Colors.grey),
+                                ),
+                              ),
                             ],
-                          ],
-                        ),
-                        if (t.bio != null) ...[
-                          const SizedBox(height: 12),
-                          Text(t.bio!,
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.black54,
-                                  height: 1.5)),
+                          ),
                         ],
                       ],
                     ),
@@ -291,27 +421,157 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
 
                   const SizedBox(height: 12),
 
+                  // ── KARTU: Tentang / Deskripsi ───────────────────────────
+                  if (t.bio != null || t.pengalaman != null || t.noHp != null)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _sectionTitle(Icons.info_outline, 'Tentang Tukang'),
+                          const SizedBox(height: 10),
+                          if (t.bio != null) ...[
+                            Text(
+                              _descExpanded
+                                  ? t.bio!
+                                  : (t.bio!.length > 150
+                                      ? '${t.bio!.substring(0, 150)}...'
+                                      : t.bio!),
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.black87,
+                                  height: 1.6),
+                            ),
+                            if (t.bio!.length > 150)
+                              GestureDetector(
+                                onTap: () => setState(
+                                    () => _descExpanded = !_descExpanded),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: Text(
+                                    _descExpanded
+                                        ? 'Lihat lebih sedikit'
+                                        : 'Lihat selengkapnya',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF2563EB),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                          if (t.pengalaman != null) ...[
+                            const SizedBox(height: 14),
+                            Row(
+                              children: const [
+                                Icon(Icons.verified_outlined,
+                                    size: 16, color: Color(0xFF2563EB)),
+                                SizedBox(width: 6),
+                                Text('Pengalaman',
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              t.pengalaman!,
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.black87,
+                                  height: 1.5),
+                            ),
+                          ],
+                          if (t.noHp != null) ...[
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                const Icon(Icons.phone_outlined,
+                                    size: 16, color: Color(0xFF10B981)),
+                                const SizedBox(width: 8),
+                                Text(
+                                  t.noHp!,
+                                  style: const TextStyle(
+                                      fontSize: 13, color: Colors.black87),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+
+                  if (t.bio != null || t.pengalaman != null || t.noHp != null)
+                    const SizedBox(height: 12),
+
+                  // ── KARTU: Portfolio Pengerjaan ──────────────────────────
+                  if (photos.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _sectionTitle(Icons.photo_library_outlined,
+                              'Portfolio Pengerjaan'),
+                          const SizedBox(height: 12),
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: photos.length,
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              crossAxisSpacing: 6,
+                              mainAxisSpacing: 6,
+                              childAspectRatio: 1,
+                            ),
+                            itemBuilder: (ctx, i) => ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: GestureDetector(
+                                onTap: () => _showPhotoFull(photos, i),
+                                child: Image.network(
+                                  photos[i],
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: const Color(0xFFF0F0F0),
+                                    child: const Icon(
+                                        Icons.broken_image_outlined,
+                                        color: Colors.grey),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  if (photos.isNotEmpty) const SizedBox(height: 12),
+
+                  // ── KARTU: Lokasi Area Kerja ─────────────────────────────
                   if (t.latitude != null && t.longitude != null)
                     Container(
                       decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16)),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       clipBehavior: Clip.antiAlias,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Padding(
                             padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-                            child: Row(children: [
-                              const Icon(Icons.location_on,
-                                  color: Color(0xFF2563EB), size: 18),
-                              const SizedBox(width: 8),
-                              const Text('Lokasi Area Kerja',
-                                  style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF1F2937))),
-                            ]),
+                            child: _sectionTitle(
+                                Icons.location_on, 'Lokasi Area Kerja'),
                           ),
                           SizedBox(
                             height: 180,
@@ -346,17 +606,20 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
                               padding:
                                   const EdgeInsets.fromLTRB(16, 10, 16, 14),
                               child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Icon(Icons.home_outlined,
-                                        size: 14, color: Colors.grey),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                        child: Text(t.alamat!,
-                                            style: const TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.black54))),
-                                  ]),
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Icon(Icons.home_outlined,
+                                      size: 14, color: Colors.grey),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      t.alamat!,
+                                      style: const TextStyle(
+                                          fontSize: 12, color: Colors.black54),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                         ],
                       ),
@@ -364,7 +627,7 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
 
                   const SizedBox(height: 12),
 
-                  // Layanan picker
+                  // ── KARTU: Pilih Layanan ─────────────────────────────────
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -374,11 +637,7 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Pilih Layanan',
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1F2937))),
+                        _sectionTitle(Icons.build_outlined, 'Pilih Layanan'),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 8,
@@ -387,9 +646,7 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
                             final selected = _selectedLayanan == l.idLayanan;
                             return GestureDetector(
                               onTap: () => setState(
-                                () =>
-                                    _selectedLayanan = l.idLayanan, // ← String
-                              ),
+                                  () => _selectedLayanan = l.idLayanan),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 14, vertical: 8),
@@ -419,6 +676,7 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
 
                   const SizedBox(height: 24),
 
+                  // ── TOMBOL AKSI ───────────────────────────────────────────
                   Row(
                     children: [
                       Expanded(
@@ -464,10 +722,118 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
     );
   }
 
-  Widget _headerPlaceholder() => Container(
-        color: const Color(0xFF2563EB),
-        child: const Center(
-          child: Icon(Icons.person, size: 80, color: Colors.white30),
+  // ── HELPER WIDGETS ────────────────────────────────────────────────────────
+
+  Widget _sectionTitle(IconData icon, String text) => Row(
+        children: [
+          Icon(icon, color: const Color(0xFF2563EB), size: 18),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1F2937),
+            ),
+          ),
+        ],
+      );
+
+  Widget _statItem(
+          IconData icon, Color iconColor, String value, String label) =>
+      Expanded(
+        child: Column(
+          children: [
+            Icon(icon, size: 18, color: iconColor),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1F2937)),
+            ),
+            Text(label,
+                style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          ],
         ),
       );
+
+  Widget _vDivider() => Container(
+        width: 1,
+        height: 40,
+        color: const Color(0xFFE5E7EB),
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+      );
+
+  Widget _workPhotoPlaceholder() => Container(
+        color: const Color(0xFF1E3A5F),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(Icons.photo_library_outlined, size: 50, color: Colors.white30),
+            SizedBox(height: 8),
+            Text(
+              'Belum ada foto pengerjaan',
+              style: TextStyle(color: Colors.white38, fontSize: 12),
+            ),
+          ],
+        ),
+      );
+
+  Widget _profilePlaceholder() => Container(
+        width: 64,
+        height: 64,
+        decoration: const BoxDecoration(
+          color: Color(0xFFE5E7EB),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.person, size: 36, color: Colors.grey),
+      );
+
+  String _formatPrice(double price) {
+    if (price >= 1000000) {
+      return '${(price / 1000000).toStringAsFixed(1)}Jt';
+    }
+    if (price >= 1000) {
+      return '${(price / 1000).toStringAsFixed(0)}K';
+    }
+    return price.toStringAsFixed(0);
+  }
+
+  void _showPhotoFull(List<String> photos, int initialIndex) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: PageController(initialPage: initialIndex),
+              itemCount: photos.length,
+              itemBuilder: (ctx, i) => InteractiveViewer(
+                child: Center(
+                  child: Image.network(
+                    photos[i],
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image,
+                        color: Colors.white54, size: 60),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 40,
+              right: 16,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

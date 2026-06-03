@@ -166,10 +166,10 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
                             borderRadius: BorderRadius.circular(12),
                             border: read
                                 ? Border.all(color: const Color(0xFFE5E7EB))
-                                : Border.all(color: _kBlue.withOpacity(0.3)),
+                                : Border.all(color: _kBlue.withValues(alpha: 0.3)),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
+                                color: Colors.black.withValues(alpha: 0.04),
                                 blurRadius: 6,
                                 offset: const Offset(0, 2),
                               ),
@@ -182,7 +182,7 @@ class _NotifikasiScreenState extends State<NotifikasiScreen> {
                                 width: 42,
                                 height: 42,
                                 decoration: BoxDecoration(
-                                  color: _colorForType(tipe).withOpacity(0.12),
+                                  color: _colorForType(tipe).withValues(alpha: 0.12),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(_iconForType(tipe),

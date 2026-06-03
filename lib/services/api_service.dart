@@ -33,7 +33,7 @@ class FirebaseService {
     // Ambil semua tukang, filter di Flutter
     final snap = await _db.collection('tukang').get();
     var list = snap.docs
-        .map((d) => {'id_tukang': d.id, ...d.data() as Map<String, dynamic>})
+        .map((d) => {'id_tukang': d.id, ...d.data()})
         .toList();
 
     if (layanan != null && layanan.isNotEmpty) {
@@ -63,7 +63,7 @@ class FirebaseService {
     debugPrint('=== tukang total: ${tukangSnap.docs.length} ===');
 
     final allTukang = tukangSnap.docs
-        .map((d) => {'id_tukang': d.id, ...d.data() as Map<String, dynamic>})
+        .map((d) => {'id_tukang': d.id, ...d.data()})
         .toList();
 
     final result = <Map<String, dynamic>>[];
