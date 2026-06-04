@@ -904,6 +904,40 @@
           <input class="form-input" type="text" id="t-foto" placeholder="URL foto (otomatis terisi setelah upload)" readonly style="font-size:11px;color:#9CA3AF" />
         </div>
       </div>
+      <!-- ── PORTFOLIO UPLOAD ── -->
+      <div class="form-group">
+        <label class="form-label">
+          Portfolio
+          <span style="font-size:10px;color:var(--gray-400);font-weight:400;margin-left:4px">PDF / PNG / JPG</span>
+        </label>
+        <div id="portfolio-drop-zone" style="border:2px dashed var(--gray-200);border-radius:10px;padding:14px;background:var(--gray-50);transition:border-color 0.2s,background 0.2s;">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input type="file" id="t-portfolio-file" accept=".pdf,.png,.jpg,.jpeg,image/*,application/pdf" style="display:none" onchange="uploadPortfolioTukang(this)" />
+            <button type="button" class="btn btn-secondary btn-sm" id="upload-portfolio-btn"
+              onclick="document.getElementById('t-portfolio-file').click()">
+              <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+              </svg>
+              Pilih Portfolio
+            </button>
+            <span style="font-size:11px;color:var(--gray-400);">PDF / PNG / JPG &bull; Maks 10MB</span>
+            <span id="upload-portfolio-status" style="font-size:12px;margin-left:auto;font-weight:500;"></span>
+          </div>
+
+          <!-- Preview area (dynamic) -->
+          <div id="portfolio-preview-wrap" style="display:none;margin-top:12px;"></div>
+
+          <!-- URL read-only -->
+          <input class="form-input" type="text" id="t-portfolio"
+            placeholder="URL portfolio (otomatis terisi setelah upload)"
+            readonly style="font-size:11px;color:var(--gray-400);margin-top:10px;cursor:default;" />
+        </div>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:5px;">
+          💡 Upload dokumen portofolio kerja tukang (foto hasil kerja atau CV dalam PDF)
+        </div>
+      </div>
+
       <div class="form-group">
         <label class="form-label">Status</label>
         <select class="form-input" id="t-status">
@@ -1265,6 +1299,11 @@ const renderTukang = () => {
         <td><div class="rating"><span class="star">★</span><span class="rating-val">${Number(t.rating||0).toFixed(1)}</span></div></td>
         <td>${t.status_aktif ? '<span class="badge badge-green">Aktif</span>' : '<span class="badge badge-gray">Nonaktif</span>'}</td>
         <td><div class="actions">
+          ${t.portfolio_url ? `<a href="${t.portfolio_url}" target="_blank" rel="noopener"
+              class="icon-btn" title="Lihat Portfolio"
+              style="background:#EFF6FF;color:#2563EB;text-decoration:none;display:flex;align-items:center;justify-content:center;">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </a>` : ''}
           <button class="icon-btn icon-btn-edit" title="Edit" onclick="editTukang('${t.id}')">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
           </button>
@@ -1277,11 +1316,23 @@ const renderTukang = () => {
 
 window.openAddTukang = () => {
   document.getElementById('modal-tukang-title').textContent = 'Tambah Tukang';
-  ['tukang-id','t-nama','t-nohp','t-kategori','t-lokasi','t-alamat','t-bio','t-tarif','t-lat','t-lng','t-foto']
+  ['tukang-id','t-nama','t-nohp','t-kategori','t-lokasi','t-alamat','t-bio',
+   't-tarif','t-lat','t-lng','t-foto','t-portfolio']
     .forEach(id => document.getElementById(id).value = '');
   document.getElementById('t-status').value = 'true';
+
+  // Reset foto preview
+  document.getElementById('foto-preview-wrap').style.display = 'none';
+  document.getElementById('upload-foto-status').textContent = '';
+
+  // Reset portfolio preview
+  const pw = document.getElementById('portfolio-preview-wrap');
+  pw.style.display = 'none';
+  pw.innerHTML = '';
+  document.getElementById('upload-portfolio-status').textContent = '';
+
   openModal('modal-tukang');
-  setTimeout(() => initMap(), 300); // ← tunggu modal render dulu
+  setTimeout(() => initMap(), 300);
 };
 
 window.editTukang = (id) => {
@@ -1300,6 +1351,36 @@ window.editTukang = (id) => {
   document.getElementById('t-lng').value = t.longitude || '';
   document.getElementById('t-foto').value = t.foto_url || '';
   document.getElementById('t-status').value = String(t.status_aktif !== false);
+
+  // ── Foto preview saat edit ────────────────────────────────────────────────
+  if (t.foto_url) {
+    const previewImg = document.getElementById('foto-preview');
+    previewImg.src = t.foto_url;
+    document.getElementById('foto-preview-wrap').style.display = 'block';
+    const fStatus = document.getElementById('upload-foto-status');
+    fStatus.textContent = '✅ Foto tersimpan';
+    fStatus.style.color = '#16A34A';
+  } else {
+    document.getElementById('foto-preview-wrap').style.display = 'none';
+    document.getElementById('upload-foto-status').textContent = '';
+  }
+
+  // ── Portfolio preview saat edit ───────────────────────────────────────────
+  const portfolioUrl = t.portfolio_url || '';
+  document.getElementById('t-portfolio').value = portfolioUrl;
+  const pw = document.getElementById('portfolio-preview-wrap');
+  const ps = document.getElementById('upload-portfolio-status');
+  if (portfolioUrl) {
+    pw.style.display = 'block';
+    pw.innerHTML = buildPortfolioPreview(portfolioUrl, '');
+    ps.textContent = '✅ Portfolio tersimpan';
+    ps.style.color = '#16A34A';
+  } else {
+    pw.style.display = 'none';
+    pw.innerHTML = '';
+    ps.textContent = '';
+  }
+
   openModal('modal-tukang');
   setTimeout(() => initMap(Number(t.latitude) || -7.5755, Number(t.longitude) || 110.8243), 300);
 };
@@ -1315,10 +1396,10 @@ window.saveTukang = async () => {
     alamat: document.getElementById('t-alamat').value.trim(),
     bio: document.getElementById('t-bio').value.trim(),
     tarif: Number(document.getElementById('t-tarif').value) || 0,
-    rating: 0,
     latitude: Number(document.getElementById('t-lat').value) || null,
     longitude: Number(document.getElementById('t-lng').value) || null,
     foto_url: document.getElementById('t-foto').value.trim() || null,
+    portfolio_url: document.getElementById('t-portfolio').value.trim() || null,
     status_aktif: document.getElementById('t-status').value === 'true',
   };
   try {
@@ -1327,6 +1408,7 @@ window.saveTukang = async () => {
       await updateDoc(doc(db, 'tukang', id), data);
       showToast('Tukang berhasil diperbarui', 'success');
     } else {
+      data.rating = 0; // rating awal hanya saat tambah baru
       await addDoc(collection(db, 'tukang'), data);
       showToast('Tukang berhasil ditambahkan', 'success');
     }
@@ -1633,6 +1715,182 @@ window.uploadFotoTukang = async (input) => {
   } finally {
     btnEl.disabled = false;
     input.value = '';
+  }
+};
+
+// ── PORTFOLIO UPLOAD ──────────────────────────────────────────────────────────
+// Catatan: Untuk upload PDF, Cloudinary perlu upload preset yang mengizinkan
+// resource_type "raw" atau "auto". Jika upload PDF gagal, buat preset baru
+// di Cloudinary Dashboard → Settings → Upload → Add upload preset, lalu
+// set Resource type = "Auto".
+
+/**
+ * Deteksi apakah URL merupakan file PDF berdasarkan URL atau path Cloudinary.
+ * @param {string} url
+ * @returns {boolean}
+ */
+const isPDFUrl = (url) => {
+  const lower = url.toLowerCase();
+  return lower.endsWith('.pdf') ||
+         lower.includes('/raw/upload/') ||
+         lower.includes('resource_type=raw');
+};
+
+/**
+ * Bangun HTML preview portfolio (dipakai saat edit maupun setelah upload).
+ * @param {string} url    - Cloudinary secure_url
+ * @param {string} label  - Nama file (kosong string jika tidak ada)
+ * @returns {string} HTML string
+ */
+const buildPortfolioPreview = (url, label) => {
+  if (isPDFUrl(url)) {
+    const displayLabel = label || 'Portfolio PDF';
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;
+                  background:#EFF6FF;border-radius:9px;border:1px solid #BFDBFE;">
+        <div style="width:38px;height:38px;min-width:38px;background:#2563EB;
+                    border-radius:8px;display:flex;align-items:center;justify-content:center;">
+          <svg width="18" height="18" fill="none" stroke="white" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586
+                 a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </div>
+        <div style="min-width:0;flex:1;">
+          <div style="font-size:12px;font-weight:600;color:#1E40AF;
+                      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            ${displayLabel}
+          </div>
+          <a href="${url}" target="_blank" rel="noopener"
+             style="font-size:11px;color:#2563EB;text-decoration:none;">
+            Buka PDF di tab baru ↗
+          </a>
+        </div>
+        <button type="button" onclick="clearPortfolio()"
+          style="background:none;border:none;cursor:pointer;color:#9CA3AF;
+                 font-size:18px;line-height:1;padding:4px;flex-shrink:0;"
+          title="Hapus portfolio">✕</button>
+      </div>`;
+  } else {
+    return `
+      <div style="position:relative;display:inline-block;">
+        <img src="${url}" crossorigin="anonymous" referrerpolicy="no-referrer"
+          style="max-width:100%;max-height:160px;border-radius:8px;
+                 object-fit:contain;border:1px solid var(--gray-200);" />
+        <button type="button" onclick="clearPortfolio()"
+          style="position:absolute;top:-8px;right:-8px;width:22px;height:22px;
+                 border-radius:50%;background:#EF4444;border:none;cursor:pointer;
+                 color:white;font-size:13px;line-height:1;display:flex;
+                 align-items:center;justify-content:center;"
+          title="Hapus portfolio">✕</button>
+      </div>`;
+  }
+};
+
+/**
+ * Hapus portfolio yang sudah dipilih / terupload dari state form.
+ */
+window.clearPortfolio = () => {
+  document.getElementById('t-portfolio').value = '';
+  const pw = document.getElementById('portfolio-preview-wrap');
+  pw.style.display = 'none';
+  pw.innerHTML = '';
+  const ps = document.getElementById('upload-portfolio-status');
+  ps.textContent = '';
+};
+
+/**
+ * Upload portfolio tukang ke Cloudinary.
+ * Mendukung PDF (resource_type=raw) dan gambar PNG/JPG (resource_type=image).
+ *
+ * Alur:
+ * 1. Validasi tipe & ukuran file
+ * 2. Pilih endpoint Cloudinary sesuai tipe file:
+ *    - PDF  → /raw/upload (file disimpan as-is, tidak ditransformasi)
+ *    - Gambar → /image/upload
+ * 3. Upload via FormData (unsigned upload)
+ * 4. Tampilkan preview dan isi field t-portfolio dengan secure_url
+ *
+ * @param {HTMLInputElement} input
+ */
+window.uploadPortfolioTukang = async (input) => {
+  const file = input.files[0];
+  if (!file) return;
+
+  // ── Validasi tipe ──────────────────────────────────────────────────────────
+  const isPDF  = file.type === 'application/pdf';
+  const isImg  = file.type.startsWith('image/');
+  if (!isPDF && !isImg) {
+    input.value = '';
+    return showToast('Format harus PDF, PNG, atau JPG', 'error');
+  }
+
+  // ── Validasi ukuran ────────────────────────────────────────────────────────
+  const MAX_MB = isPDF ? 10 : 5;
+  if (file.size > MAX_MB * 1024 * 1024) {
+    input.value = '';
+    return showToast(`Ukuran ${isPDF ? 'PDF' : 'gambar'} maksimal ${MAX_MB}MB`, 'error');
+  }
+
+  const statusEl = document.getElementById('upload-portfolio-status');
+  const btnEl    = document.getElementById('upload-portfolio-btn');
+
+  statusEl.textContent = '⏳ Mengupload…';
+  statusEl.style.color = '#6B7280';
+  btnEl.disabled = true;
+
+  // Animasi drop-zone
+  const dz = document.getElementById('portfolio-drop-zone');
+  dz.style.borderColor = '#2563EB';
+  dz.style.background  = '#EFF6FF';
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+    // Pilih resource_type berdasarkan tipe file
+    // PDF  → raw  (disimpan tanpa transformasi, cocok untuk dokumen)
+    // Gambar → image (bisa ditransformasi / dikompres Cloudinary)
+    const resourceType = isPDF ? 'raw' : 'image';
+    const endpoint = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
+
+    const res  = await fetch(endpoint, { method: 'POST', body: formData });
+    const data = await res.json();
+
+    if (data.secure_url) {
+      const url = data.secure_url;
+
+      // Isi hidden URL
+      document.getElementById('t-portfolio').value = url;
+
+      // Tampilkan preview
+      const pw = document.getElementById('portfolio-preview-wrap');
+      pw.style.display = 'block';
+      pw.innerHTML = buildPortfolioPreview(url, file.name);
+
+      statusEl.textContent = '✅ Upload berhasil';
+      statusEl.style.color = '#16A34A';
+      showToast('Portfolio berhasil diupload ✓', 'success');
+    } else {
+      // Cloudinary mengembalikan respons error
+      const errMsg = data.error?.message || 'Upload gagal';
+      // Hint khusus jika preset tidak mendukung raw
+      const hint = isPDF && errMsg.toLowerCase().includes('preset')
+        ? ' — Pastikan upload preset Cloudinary mengizinkan resource type "Raw" atau "Auto".'
+        : '';
+      throw new Error(errMsg + hint);
+    }
+  } catch (e) {
+    statusEl.textContent = '❌ Gagal upload';
+    statusEl.style.color = '#DC2626';
+    showToast('Upload portfolio gagal: ' + e.message, 'error');
+    console.error('[Portfolio Upload Error]', e);
+  } finally {
+    btnEl.disabled = false;
+    input.value   = ''; // reset input agar file yang sama bisa dipilih ulang
+    dz.style.borderColor = '';
+    dz.style.background  = '';
   }
 };
 
