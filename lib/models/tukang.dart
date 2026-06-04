@@ -5,16 +5,20 @@ class Tukang {
   final String? lokasi;
   final String? alamat;
   final String? bio;
-  final String? pengalaman;        // ← BARU
+  final String? pengalaman;
   final String? noHp;
   final double? tarif;
-  final int? jumlahOrder;          // ← BARU
+  final int? jumlahOrder;
   final bool statusAktif;
   final String? fotoUrl;
   final double rating;
   final double? latitude;
   final double? longitude;
-  final List<String>? fotoPortfolioUrls; // ← BARU
+  final List<String>? fotoPortfolioUrls;
+
+  /// URL portfolio tunggal (PDF atau gambar) yang diupload via admin panel.
+  /// Di-mapping dari field [portfolio_url] di Firestore.
+  final String? portfolioUrl;
 
   Tukang({
     required this.idTukang,
@@ -33,6 +37,7 @@ class Tukang {
     this.latitude,
     this.longitude,
     this.fotoPortfolioUrls,
+    this.portfolioUrl,
   });
 
   factory Tukang.fromJson(Map<String, dynamic> j) => Tukang(
@@ -45,14 +50,21 @@ class Tukang {
         pengalaman: j['pengalaman'],
         noHp: j['no_hp'],
         tarif: j['tarif'] != null ? (j['tarif'] as num).toDouble() : null,
-        jumlahOrder: j['jumlah_order'] != null ? (j['jumlah_order'] as num).toInt() : null,
+        jumlahOrder: j['jumlah_order'] != null
+            ? (j['jumlah_order'] as num).toInt()
+            : null,
         statusAktif: j['status_aktif'] == true || j['status_aktif'] == 1,
         fotoUrl: j['foto_url'],
         rating: ((j['rating'] ?? 4.7) as num).toDouble(),
-        latitude: j['latitude'] != null ? (j['latitude'] as num).toDouble() : null,
-        longitude: j['longitude'] != null ? (j['longitude'] as num).toDouble() : null,
+        latitude:
+            j['latitude'] != null ? (j['latitude'] as num).toDouble() : null,
+        longitude:
+            j['longitude'] != null ? (j['longitude'] as num).toDouble() : null,
         fotoPortfolioUrls: j['foto_portfolio'] != null
             ? List<String>.from(j['foto_portfolio'] as List)
             : null,
+
+        // Field baru: portfolio_url (string tunggal, bisa PDF atau gambar)
+        portfolioUrl: j['portfolio_url'] as String?,
       );
 }

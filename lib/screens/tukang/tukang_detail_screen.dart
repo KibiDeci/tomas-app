@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../services/api_service.dart';
 import '../../models/tukang.dart';
 import '../../models/layanan.dart';
@@ -151,6 +152,27 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
     );
   }
 
+  // ── Deteksi apakah URL adalah PDF ────────────────────────────────────────
+  // Cloudinary menyimpan PDF di path /raw/upload/, sementara gambar di /image/upload/
+  bool _isPdfUrl(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('/raw/upload/') || lower.endsWith('.pdf');
+  }
+
+  // ── Buka portfolio di browser / PDF viewer eksternal ─────────────────────
+  Future<void> _openPortfolio(String url) async {
+    final uri = Uri.parse(url);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Tidak dapat membuka portfolio. Pastikan ada aplikasi PDF viewer.'),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -291,7 +313,7 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── KARTU: Foto Profil (kiri) + Nama (kanan) ────────────
+                  // ── KARTU: Foto Profil + Nama ────────────────────────────
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -304,7 +326,6 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            // Foto profil kiri
                             ClipRRect(
                               borderRadius: BorderRadius.circular(40),
                               child: t.fotoUrl != null
@@ -319,7 +340,6 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
                                   : _profilePlaceholder(),
                             ),
                             const SizedBox(width: 14),
-                            // Nama + Kategori
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -344,7 +364,6 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
                                 ],
                               ),
                             ),
-                            // Badge status
                             Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 4),
@@ -373,12 +392,8 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
                         // Statistik: Rating | Pesanan | Tarif
                         Row(
                           children: [
-                            _statItem(
-                              Icons.star,
-                              const Color(0xFFF59E0B),
-                              t.rating.toStringAsFixed(1),
-                              'Rating',
-                            ),
+                            _statItem(Icons.star, const Color(0xFFF59E0B),
+                                t.rating.toStringAsFixed(1), 'Rating'),
                             _vDivider(),
                             _statItem(
                               Icons.work_outline,
@@ -421,7 +436,7 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
 
                   const SizedBox(height: 12),
 
-                  // ── KARTU: Tentang / Deskripsi ───────────────────────────
+                  // ── KARTU: Tentang Tukang ────────────────────────────────
                   if (t.bio != null || t.pengalaman != null || t.noHp != null)
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -509,7 +524,7 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
                   if (t.bio != null || t.pengalaman != null || t.noHp != null)
                     const SizedBox(height: 12),
 
-                  // ── KARTU: Portfolio Pengerjaan ──────────────────────────
+                  // ── KARTU: Portfolio Foto (dari field foto_portfolio) ─────
                   if (photos.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -556,6 +571,13 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
                     ),
 
                   if (photos.isNotEmpty) const SizedBox(height: 12),
+
+                  // ══ KARTU: Portfolio Dokumen (dari field portfolio_url) ══
+                  // Menampilkan preview PDF atau gambar yang diupload admin.
+                  if (t.portfolioUrl != null) ...[
+                    _buildPortfolioCard(t.portfolioUrl!),
+                    const SizedBox(height: 12),
+                  ],
 
                   // ── KARTU: Lokasi Area Kerja ─────────────────────────────
                   if (t.latitude != null && t.longitude != null)
@@ -719,6 +741,226 @@ class _TukangDetailScreenState extends State<TukangDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // PORTFOLIO WIDGETS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Card utama portfolio — memilih antara tampilan PDF atau gambar
+  /// berdasarkan deteksi URL.
+  Widget _buildPortfolioCard(String url) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle(Icons.folder_copy_outlined, 'Portfolio'),
+          const SizedBox(height: 12),
+          _isPdfUrl(url) ? _buildPdfPreview(url) : _buildImagePreview(url),
+        ],
+      ),
+    );
+  }
+
+  /// Tampilan preview untuk file PDF.
+  ///
+  /// Karena Flutter tidak bisa me-render PDF secara native tanpa package
+  /// tambahan, kita tampilkan card informatif yang bisa dibuka via url_launcher
+  /// ke browser / aplikasi PDF viewer yang terpasang di perangkat.
+  Widget _buildPdfPreview(String url) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Card utama PDF
+        GestureDetector(
+          onTap: () => _openPortfolio(url),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFBFDBFE), width: 1.5),
+            ),
+            child: Row(
+              children: [
+                // Ikon PDF
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.picture_as_pdf_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                // Teks info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Portfolio PDF',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E40AF),
+                        ),
+                      ),
+                      SizedBox(height: 3),
+                      Text(
+                        'Ketuk untuk membuka dokumen',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF60A5FA),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Ikon buka
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.open_in_new_rounded,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        // Tombol alternatif yang lebih jelas
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => _openPortfolio(url),
+            icon: const Icon(Icons.download_rounded, size: 18),
+            label: const Text('Buka / Unduh Portfolio PDF'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF2563EB),
+              side: const BorderSide(color: Color(0xFF2563EB)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Tampilan preview untuk file gambar (PNG / JPG).
+  ///
+  /// Menampilkan gambar penuh dengan kemampuan tap untuk melihat fullscreen.
+  Widget _buildImagePreview(String url) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Thumbnail gambar — tap → fullscreen
+        GestureDetector(
+          onTap: () => _showPhotoFull([url], 0),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Stack(
+              children: [
+                Image.network(
+                  url,
+                  width: double.infinity,
+                  height: 220,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (ctx, child, progress) {
+                    if (progress == null) return child;
+                    return Container(
+                      height: 220,
+                      color: const Color(0xFFF0F6FF),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          value: progress.expectedTotalBytes != null
+                              ? progress.cumulativeBytesLoaded /
+                                  progress.expectedTotalBytes!
+                              : null,
+                          color: const Color(0xFF2563EB),
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    );
+                  },
+                  errorBuilder: (_, __, ___) => Container(
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0F0F0),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.broken_image_outlined,
+                            color: Colors.grey, size: 40),
+                        SizedBox(height: 8),
+                        Text('Gagal memuat gambar',
+                            style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ),
+                // Label "Ketuk untuk perbesar"
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [Colors.black54, Colors.transparent],
+                      ),
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(12),
+                        bottomRight: Radius.circular(12),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.zoom_in_rounded,
+                            size: 14, color: Colors.white70),
+                        SizedBox(width: 4),
+                        Text(
+                          'Ketuk untuk memperbesar',
+                          style: TextStyle(color: Colors.white70, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
